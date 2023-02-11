@@ -318,7 +318,7 @@ func main() {
 	
 	flag.Parse()
 
-	serverAddr, err := net.ResolveUDPAddr("udp", ":"+ *port)
+	serverAddr, err := net.ResolveUDPAddr("udp", "0.0.0.0:"+ *port)
 
 
 	if err != nil {
