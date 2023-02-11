@@ -1,20 +1,8 @@
-Simple DNS Server implemented in Go
-===================================
+# humandns53
 
-The Domain Name System (DNS) consists of multiple elements: Authoritative
-DNS Servers store and provide DNS record information, Recursive DNS servers
-(also referred to as caching DNS servers) are the "middlemen" that recursively
-look up information on behalf of an end-user. See
-[Authoritative vs. Recursive DNS Servers: What's The Difference] for an overview.
+A reference implementation of humandns dns server: the dns server part of [humandns](https://github.com/h4sh5/humandns)
 
-This project provides a subset of the functionality of an **Authoritative
-DNS Server** as a study project. If you need a production-grade DNS Server in Go,
-have a look at [CoreDNS]. For DNS library support, see [Go DNS] or
-[package dnsmessage].
 
-Featured on [r/golang] and [go-nuts].
-
-![Simple DNS Server implemented in Go](https://raw.githubusercontent.com/dlorch/dnsserver/master/dnsserver-go.gif)
 
 Run
 ---
@@ -23,25 +11,25 @@ Run
 $ go run . &
 Listening at:  :1053
 
-$ dig example.com @localhost -p 1053
-Received request from  [::1]:63282
+$ dig ack-ack-ack-low.ip4  @localhost -p 1053
 
-; <<>> DiG 9.10.6 <<>> example.com @localhost -p 1053
+; <<>> DiG 9.16.31-RH <<>> ack-ack-ack-low.ip4 @localhost -p 1053
 ;; global options: +cmd
 ;; Got answer:
-;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 17060
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 23558
 ;; flags: qr; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 0
 
 ;; QUESTION SECTION:
-;example.com.			IN	A
+;ack-ack-ack-low.ip4.		IN	A
 
 ;; ANSWER SECTION:
-example.com.		31337	IN	A	3.1.3.7
+ack-ack-ack-low.ip4.	31337	IN	A	127.0.0.1
 
 ;; Query time: 0 msec
 ;; SERVER: ::1#1053(::1)
-;; WHEN: Mon Jun 17 17:02:43 CEST 2019
-;; MSG SIZE  rcvd: 56
+;; WHEN: Sun Feb 12 00:03:47 AEST 2023
+;; MSG SIZE  rcvd: 72
+
 ```
 
 Concepts
@@ -56,8 +44,8 @@ Concepts
 TODO
 ----
 
-* Implement more record types (CNAME, MX, TXT, AAAA, ...) according to section 3.2.2. of [RFC 1035: Domain Names - Implementation and Specification]
-* Implement [DNS Message Compression] according to section 4.1.4. of [RFC 1035: Domain Names - Implementation and Specification] (thank you [knome] for pointing this out)
+* Add support for IPv6 records
+
 
 Links
 -----
