@@ -45,6 +45,7 @@ import (
 )
 
 var redisClient *redis.Client 
+var ExpiryTimeInSeconds uint
 
 // DNSHeader describes the request/response DNS header
 type DNSHeader struct {
@@ -69,6 +70,7 @@ type DNSResourceRecord struct {
 // Type and Class values for DNSResourceRecord
 const (
 	TypeA                  uint16 = 1 // a host address
+	TypeAAAA			   uint16 = 28 // ipv6 addr
 	ClassINET              uint16 = 1 // the Internet
 	FlagResponse           uint16 = 1 << 15
 	UDPMaxMessageSizeBytes uint   = 512 // RFC1035
@@ -81,28 +83,65 @@ func dbLookup(queryResourceRecord DNSResourceRecord) ([]DNSResourceRecord, []DNS
 	var additionalResourceRecords = make([]DNSResourceRecord, 0)
 
 	// TODO add support for IPv6 lookup
-	if queryResourceRecord.Type != TypeA || queryResourceRecord.Class != ClassINET { // only IPv4 supported for now
+	if queryResourceRecord.Class != ClassINET {
 		return answerResourceRecords, authorityResourceRecords, additionalResourceRecords
 	}
 
-	//queryResourceRecord.DomainName
-	resolvedAddress := redisClient.Get(queryResourceRecord.DomainName)
-	if resolvedAddress.Val() == "" { // not in db, probably should return NXDOMAIN
-		return answerResourceRecords, authorityResourceRecords, additionalResourceRecords
+	if queryResourceRecord.Type == TypeA || queryResourceRecord.Type == TypeAAAA {
+		//queryResourceRecord.DomainName
+		resolvedAddress := redisClient.Get(queryResourceRecord.DomainName)
+		if resolvedAddress.Val() == "" { // not in db, probably should return NXDOMAIN instead
+			return answerResourceRecords, authorityResourceRecords, additionalResourceRecords
+		}
+
+		parsedAddress := net.ParseIP(resolvedAddress.Val())
+		log.Printf("%s resolved to %s (parsed %#v)", queryResourceRecord.DomainName, resolvedAddress, parsedAddress)
+
+		// if queryResourceRecord.Type == TypeA {
+		if strings.Contains(queryResourceRecord.DomainName, "ip4") {
+			if queryResourceRecord.Type == TypeA {
+				answerResourceRecords = append(answerResourceRecords, DNSResourceRecord{
+					DomainName:         queryResourceRecord.DomainName,
+					Type:               TypeA,
+					Class:              ClassINET,
+					TimeToLive:         uint32(ExpiryTimeInSeconds),
+					ResourceData:       parsedAddress[12:16], // ipv4 address
+					ResourceDataLength: 4,
+				})
+
+			}
+			
+
+		} else if strings.Contains(queryResourceRecord.DomainName, "ip6") {
+
+			if queryResourceRecord.Type == TypeAAAA  {
+				answerResourceRecords = append(answerResourceRecords, DNSResourceRecord{
+					DomainName:         queryResourceRecord.DomainName,
+					Type:               TypeAAAA,
+					Class:              ClassINET,
+					TimeToLive:         uint32(ExpiryTimeInSeconds),
+					ResourceData:       parsedAddress, // ipv6 address
+					ResourceDataLength: 16,
+				})
+			} else { // if they queried a ipv6 name without querying the type AAAA, put it in the additional records
+				additionalResourceRecords = append(additionalResourceRecords, DNSResourceRecord{
+					DomainName:         queryResourceRecord.DomainName,
+					Type:               TypeAAAA,
+					Class:              ClassINET,
+					TimeToLive:         uint32(ExpiryTimeInSeconds),
+					ResourceData:       parsedAddress, // ipv6 address
+					ResourceDataLength: 16,
+				})
+			}
+			
+		}
+
 	}
 
-	parsedAddress := net.ParseIP(resolvedAddress.Val())
-	log.Printf("%s resolved to %s (parsed %#v)", queryResourceRecord.DomainName, resolvedAddress, parsedAddress)
+	
 	
 
-	answerResourceRecords = append(answerResourceRecords, DNSResourceRecord{
-		DomainName:         queryResourceRecord.DomainName,
-		Type:               TypeA,
-		Class:              ClassINET,
-		TimeToLive:         31337,
-		ResourceData:       parsedAddress[12:16], // ipv4 address
-		ResourceDataLength: 4,
-	})
+	
 	
 
 
@@ -275,6 +314,7 @@ func handleDNSClient(requestBytes []byte, serverConn *net.UDPConn, clientAddr *n
 func main() {
 
 	port := flag.String("port", "1053", "port to listen on")
+	flag.UintVar(&ExpiryTimeInSeconds, "expiry", 1800, "expiry time in seconds")
 	
 	flag.Parse()
 
